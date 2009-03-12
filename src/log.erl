@@ -120,9 +120,11 @@ do_log( Type, Pid, File, Line, Format, Args, State ) ->
         end,
 	
 	% Allow non-list singular argument
+	IsString = is_string(Args),
 	Args2 =
-        if is_list(Args) -> Args;
-           true          -> [Args]
+        if IsString == true -> [Args];
+		   is_list(Args)   -> Args;
+           true            -> [Args]
         end,
 	
 	Data = case Args2 of 
@@ -130,7 +132,7 @@ do_log( Type, Pid, File, Line, Format, Args, State ) ->
 			   List when is_list(List) ->
 				   lists:flatten( io_lib:format( Format2, Args2 ) )
 		   end,
-					   
+	
     Buf = io_lib:format( 
 			"~4..0w-~2..0w-~2..0w ~2..0w:~2..0w:~2..0w.~6..0w [~-7s] ~p (~s:~w) - ~s\n",
         [ Year, Month, Day, Hour, Minute, Second, Usec, 
@@ -147,6 +149,15 @@ do_log( Type, Pid, File, Line, Format, Args, State ) ->
 get_simple_name( AbsolutePath ) ->
 	[First|_] = lists:reverse( util:unjoin( AbsolutePath, "/" ) ),
 	First.
+
+is_string([H|T]) ->
+    if 0 =< H, 
+	   H < 256, 
+	   integer(H)  -> is_string(T);
+	true -> false
+    end;
+is_string([]) -> true.
+
 
 test() ->
 	?ERROR( "Que pasa??" ),

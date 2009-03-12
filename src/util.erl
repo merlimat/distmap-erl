@@ -10,11 +10,16 @@
 %%
 %% Exported Functions
 %%
--export([unjoin/2]).
+-export([format_addr/2, unjoin/2]).
 
 %%
 %% API Functions
 %%
+
+format_addr( {A,B,C,D}, Port ) -> 
+	lists:flatten( io_lib:format( "~p.~p.~p.~p:~p", [A,B,C,D,Port]) ).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 unjoin(String, []) ->
      unjoin0(String);

@@ -16,91 +16,73 @@
 %% API Functions
 %%
 
-new() -> empty.
+new() -> 
+	ets:new(nodes,[ordered_set]).
 
-is_empty( Ring ) when Ring =:= empty -> true;
-is_empty( _ ) -> false.
+add_node( Ring, Node, N ) ->
+	ets:insert( Ring, {gen_key(Node), Node, real, N} ),
+	lists:foreach( fun(X) -> 
+				       Key = gen_key(Node, X),
+					   ets:insert( Ring, {Key,Node, virtual, N} )
+			       end, lists:seq(1, N-1) ), 
+	ok.
 
-put(K, V, T) ->
-	{_,L,K1,V1,R} = put1(K, V, T),
-	{b,L,K1,V1,R}.				%setelement(1, b, T1).
+remove_node( Ring, Node ) ->
+	BaseKey = gen_key(Node),
+	[{_, Node, _, N}] = ets:lookup( Ring, BaseKey ),
+	ets:delete( Ring, BaseKey ),
+	lists:foreach( fun(X) -> 
+					   ets:delete( Ring, gen_key(Node, X) )
+			       end, lists:seq(1, N-1) ), 
+	ok.
 
-put1(K, V, empty) -> {r,empty,K,V,empty};
-put1(K, V, {C,Left,K1,V1,Right}) when K < K1 ->
-    lbalance(C, put1(K, V, Left), K1, V1, Right);
-put1(K, V, {C,Left,K1,V1,Right}) when K > K1 ->
-    rbalance(C, Left, K1, V1, put1(K, V, Right));
-put1(K, V, {C,L,_,_,R}) ->
-    {C,L,K,V,R}.
-
-get_node(Key, Ring) -> 
-	ok.	
-
-get_node1(K, {_,Left,K1,Val,_}, Ring) when K < K1 ->
-	io:format("K1: ~p -- Left: ~p~n", [K1, Left]),
-	case Left of
-		{_, _, K2, _, _} ->
-			if K =< K2 -> 
-				   get_node1( K, Left, Ring );
-			   true -> 
-				   Val
-			end;
-
-		empty -> Val
-	end;
-get_node1( K, {_,_,K1,Val,Right}, Ring ) when K > K1 ->
-	io:format("K1: ~p -- Right: ~p~n", [K1, Right]),
-	case Right of
-		{_, _, K2, _, _} ->
-			if K >= K2 -> 
-				   get_node1( K, Right, Ring );
-			   true -> 
-				   Val
-			end;
-
-		empty -> Val
-	end;
-get_node1(_, {_,_,_,Val,_}, _) -> Val.
-
-nodes( T ) -> nodes( T, [] ).
-nodes( empty, Tail ) -> Tail;
-nodes( {_,L,_K,V,R}, Tail ) ->
-	nodes( L, [V|nodes(R, Tail)] ).
+get_node( Ring, Object ) ->
+	Key = gen_key( Object ), 
+	NodeKey = case ets:next( Ring, Key ) of
+				  '$end_of_table' -> ets:first( Ring );
+				  K -> K
+			  end,
+	[{NodeKey, Node, _, _}] = ets:lookup( Ring, NodeKey ),
+	Node.
 
 %%
 %% Local Functions
 %%
 
-%% lbalance(Colour, Left, Key, Val, Right).
-%% rbalance(Colour, Left, Key, Val, Right).
-%% Balance a tree afer (possibly) adding a node to the left/right.
-lbalance(b, {r,{r,A,Xk,Xv,B},Yk,Yv,C}, Zk, Zv, D) ->
-    {r,{b,A,Xk,Xv,B},Yk,Yv,{b,C,Zk,Zv,D}};
-lbalance(b, {r,A,Xk,Xv,{r,B,Yk,Yv,C}}, Zk, Zv, D) ->
-    {r,{b,A,Xk,Xv,B},Yk,Yv,{b,C,Zk,Zv,D}};
-lbalance(C, A, Xk, Xv, B) -> {C,A,Xk,Xv,B}.
+gen_key( Arg ) ->
+	erlang:md5( term_to_binary(Arg) ).
 
-rbalance(b, A, Xk, Xv, {r,{r,B,Yk,Yv,C},Zk,Zv,D}) ->
-    {r,{b,A,Xk,Xv,B},Yk,Yv,{b,C,Zk,Zv,D}};
-rbalance(b, A, Xk, Xv, {r,B,Yk,Yv,{r,C,Zk,Zv,D}}) ->
-    {r,{b,A,Xk,Xv,B},Yk,Yv,{b,C,Zk,Zv,D}};
-rbalance(C, A, Xk, Xv, B) -> {C,A,Xk,Xv,B}.
+gen_key( Node, N ) when is_integer(N) ->
+	erlang:md5( term_to_binary({Node, N}) ).
+
+get_node_replicas( Node, [{First,N}|Rest] ) ->
+	if Node =:= First ->
+		   N;
+	   true ->
+		   get_node_replicas(Node, Rest)
+	end.
 
 test() ->
-	R = new(),
-	R1 = put( 1, "one", R ),
-	R2 = put( 2, "two", R1 ),
-	R3 = put( 5, "five", R2 ),
-	R4 = put( 20, "twenty", R3 ),
-	io:format( "R4: ~p~n", [R4] ),
-	io:format( "Keys: ~p~n", [nodes(R4)] ),
-	%lists:map( fun(X) ->
-	%		     io:format( "~p: ~p~n", [X, get_node(X, R4)] )
-	%	       end, nodes(R4) ),
+	R = ring:new(),
+	NodeList = [a, b, c, d, e, f, g, h, i, l, m, n, o, p, q, r, s, t, u, v, z],
+	lists:foreach(fun(Node) -> ring:add_node(R, Node, 100) end, 
+						NodeList ),
 	
-	io:format( "0: ~p~n", [get_node(0, R4)] ),
-	io:format( "7: ~p~n", [get_node(7, R4)] ),
-	ok.
+	N = 1000000,
+ 	{Time, Res} = timer:tc( ?MODULE, get_node_test, [R, N, NodeList] ),
+ 	io:format( "Res: ~p~n", [Res] ),
+ 	io:format( "Time:     ~p ms~n", [Time / 1000] ),
+ 	io:format( "Avg Time: ~p us~n", [Time / N ] ).
 
+get_node_test( R, N, NodeList ) ->
+	T = ets:new(name, [ordered_set]),
+	lists:foreach( fun(X) -> ets:insert(T, {X,0} ) end, NodeList ),
+	get_node_test1( R, T, N ),
+	ets:tab2list( T ).
 
-	
+get_node_test1( _R, _T, 0 ) -> ok;
+get_node_test1( R, T, N ) ->
+	Node = ring:get_node( R, N ),
+	ets:update_counter(T, Node, 1),
+	get_node_test1(R, T, N-1).
+

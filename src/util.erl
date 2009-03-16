@@ -10,7 +10,7 @@
 %%
 %% Exported Functions
 %%
--export([format_addr/2, unjoin/2]).
+-export([format_addr/2, unjoin/2, benchmark/4]).
 
 %%
 %% API Functions
@@ -18,6 +18,26 @@
 
 format_addr( {A,B,C,D}, Port ) -> 
 	lists:flatten( io_lib:format( "~p.~p.~p.~p:~p", [A,B,C,D,Port]) ).
+
+
+benchmark( Mod, Fun, Args, N ) when N > 0 ->
+    L = test_loop( Mod, Fun, Args, N, []),
+    Length = length(L),
+    {Min,_} = lists:min(L),
+    {Max,_} = lists:max(L),
+    {Med,Res} = lists:nth(round((Length / 2)), lists:sort(L)),
+    Avg = round(lists:foldl(fun({X,_}, Sum) -> X + Sum end, 0, L) / Length),
+	StdDev = round( math:sqrt( 
+			   lists:foldl( fun({X,_}, Sum) -> math:pow( X - Avg, 2) + Sum end, 0, L ) 
+			   / Length ) ),
+	Stats = [ {min, Min}, {max, Max}, {med, Med}, {avg, Avg}, {stddev, StdDev}],
+    {Res, Stats}.
+
+test_loop( _Mod, _Fun, _Args, 0, List ) ->
+    List;
+test_loop( Mod, Fun, Args, N, List ) ->
+    Res = timer:tc( Mod, Fun, Args ),
+    test_loop( Mod, Fun, Args, N - 1, [Res|List] ).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 

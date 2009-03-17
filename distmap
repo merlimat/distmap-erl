@@ -1,0 +1,20 @@
+#!/usr/bin/env escript
+%%! -pa ebin +K true -noshell
+
+-mode( compile ).
+
+main( Args ) ->
+	OptSpec = [ {help, boolean},
+	        	{version, v, boolean},
+		        {debug, d, boolean}
+	        ],
+	Defaults = [ {debug, false} ],
+
+	{Opts, Meters} = getoptions:extract_options(Args, OptSpec, Defaults),
+	io:format("~p~n", [Opts]),
+	io:format("Meters: ~p~n", [Meters]),
+	
+	ring:test(), 
+
+	erlang:halt( 0 ).
+

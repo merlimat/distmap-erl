@@ -27,7 +27,7 @@ start() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], _Opts = []).
 
 log( Type, Pid, File, Line, Format ) ->
-	log( Type, Pid, File, Line, Format, [] ).
+	log( Type, Pid, File, Line, Format, none ).
 
 log( Type, Pid, File, Line, Format, Args ) ->
 	gen_server:cast(?MODULE, {log, Type, Pid, File, Line, Format, Args}).
@@ -120,15 +120,18 @@ do_log( Type, Pid, File, Line, Format, Args, State ) ->
         end,
 	
 	% Allow non-list singular argument
-	IsString = is_string(Args),
+	IsString = if is_atom(Args) -> false;
+				  true -> is_string(Args)
+			   end,
 	Args2 =
-        if IsString == true -> [Args];
+        if is_atom(Args) -> none;
+		   IsString == true -> [Args];
 		   is_list(Args)   -> Args;
            true            -> [Args]
         end,
 	
 	Data = case Args2 of 
-			   [] -> Format2;
+			   none -> Format2;
 			   List when is_list(List) ->
 				   lists:flatten( io_lib:format( Format2, Args2 ) )
 		   end,

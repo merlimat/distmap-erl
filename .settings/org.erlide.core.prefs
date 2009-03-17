@@ -1,7 +1,6 @@
-#Wed Mar 11 18:27:56 CET 2009
-backend_cookie=
+#Tue Mar 17 08:18:53 CET 2009
 backend_name=Erlang
-backend_node=erlide
+backend_version=R12B
 eclipse.preferences.version=1
 external_includes=
 external_modules=

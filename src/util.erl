@@ -10,20 +10,24 @@
 %%
 %% Exported Functions
 %%
--export([for/3, format_addr/2, unjoin/2, benchmark/4]).
+-export([for/3, format_addr/2, unjoin/2, benchmark/4, make_uuid/0]).
 
 %%
 %% API Functions
 %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 for( I, N, _Fun ) when I > N-> ok;
 for( I, N, Fun ) ->
 	Fun( I ), 
 	for( I+1, N, Fun ).
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 format_addr( {A,B,C,D}, Port ) -> 
 	lists:flatten( io_lib:format( "~p.~p.~p.~p:~p", [A,B,C,D,Port]) ).
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 benchmark( Mod, Fun, Args, N ) when N > 0 ->
     L = test_loop( Mod, Fun, Args, N, []),
@@ -98,3 +102,26 @@ unjoin2_loop([], _, _, _, Rev) ->
 unjoin_prefix([C|L], [C|S]) -> unjoin_prefix(L, S);
 unjoin_prefix([],    S)     -> S;
 unjoin_prefix(_,     _)     -> no.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%% UUID 
+%% Copyright (c) 2008, Travis Vachon
+
+make_uuid() -> list_to_atom( uuid_to_string( uuid_v4() ) ).
+
+uuid_v4() ->
+    uuid_v4( random:uniform(round(math:pow(2, 48))) - 1, 
+	         random:uniform(round(math:pow(2, 12))) - 1, 
+		     random:uniform(round(math:pow(2, 32))) - 1, 
+		     random:uniform(round(math:pow(2, 30))) - 1 ).
+
+uuid_v4(R1, R2, R3, R4) -> <<R1:48, 4:4, R2:12, 2:2, R3:32, R4: 30>>.
+
+uuid_to_string(U) ->
+    lists:flatten(io_lib:format("~8.16.0b-~4.16.0b-~4.16.0b-~2.16.0b~2.16.0b-~12.16.0b", 
+								uuid_get_parts(U))).
+
+uuid_get_parts(<<TL:32, TM:16, THV:16, CSR:8, CSL:8, N:48>>) ->
+    [TL, TM, THV, CSR, CSL, N].
+ 

@@ -13,6 +13,8 @@
 -export( [new/0, add_node/3, remove_node/2, get_node/2, get_preference_list/3, 
 		  get_next_physical_node/2, test/0, get_node_test/3] ).
 
+-import( util, [for/3] ).
+
 %%
 %% API Functions
 %%
@@ -22,14 +24,11 @@ new() ->
 
 add_node( Ring, Node, N ) ->
 	ets:insert( Ring, {gen_key(Node), Node, real, N} ),
-	
-	if N > 1 -> lists:foreach( fun(X) -> 
-				       Key = gen_key(Node, X),
-					   ets:insert( Ring, {Key,Node, virtual, N} )
-			       end, lists:seq(1, N-1) ),
-				ok;
-	   true -> ok
-	end.
+	for( 1, N-1, fun(X) -> 
+				     Key = gen_key(Node, X),
+					 ets:insert( Ring, {Key,Node, virtual, N} )
+			     end ), 
+	ok.
 
 remove_node( Ring, Node ) ->
 	BaseKey = gen_key(Node),
@@ -38,11 +37,9 @@ remove_node( Ring, Node ) ->
 	ets:delete( Ring, BaseKey ),
 	
 	% Delete virtual nodes
-	if N > 1 -> lists:foreach( fun(X) -> 
-					   ets:delete( Ring, gen_key(Node, X) )
-			       end, lists:seq(1, N-1) );
-	   true -> ok
-	end,
+	for( 1, N-1, fun(X) -> 
+				    ets:delete( Ring, gen_key(Node, X) )
+			     end ),
 	ok.
 
 get_node( Ring, Object ) ->

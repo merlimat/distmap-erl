@@ -10,11 +10,16 @@
 %%
 %% Exported Functions
 %%
--export([format_addr/2, unjoin/2, benchmark/4]).
+-export([for/3, format_addr/2, unjoin/2, benchmark/4]).
 
 %%
 %% API Functions
 %%
+
+for( I, N, _Fun ) when I > N-> ok;
+for( I, N, Fun ) ->
+	Fun( I ), 
+	for( I+1, N, Fun ).
 
 format_addr( {A,B,C,D}, Port ) -> 
 	lists:flatten( io_lib:format( "~p.~p.~p.~p:~p", [A,B,C,D,Port]) ).

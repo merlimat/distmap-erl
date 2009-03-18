@@ -10,7 +10,7 @@
 %%
 %% Exported Functions
 %%
--export([start/0, stop/0, loop_start/0, loop/1, start_monitor/1, end_monitor/0]).
+-export([start/0, stop/0, loop_start/0, loop/1, start_monitor/1, end_monitor/0, ping/1]).
 
 %%
 %% API Functions
@@ -67,3 +67,15 @@ flush_messages() ->
 	after 0 ->
 		ok
 	end.
+
+
+ping(Node) when is_atom(Node) ->
+    case catch gen:call({net_kernel, Node},
+			'$gen_call',
+			{is_auth, node()},
+			1000 ) of
+	{ok, yes} -> pong;
+	_ ->
+	    erlang:disconnect_node(Node),
+	    pang
+    end.

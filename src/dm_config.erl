@@ -1,7 +1,7 @@
 %% Author: mat
 %% Created: 11/mar/2009
 %% Description: TODO: Add description to config
--module(config).
+-module(dm_config).
 
 %%
 %% Include files

@@ -4,7 +4,7 @@
 %%%
 %%% Created : 11/mar/2009
 %%% -------------------------------------------------------------------
--module(log).
+-module(dm_log).
 
 -behaviour(gen_server).
 %% --------------------------------------------------------------------
@@ -14,7 +14,7 @@
 
 %% --------------------------------------------------------------------
 %% External exports
--export([start/0, log/5, log/6, test/0]).
+-export([start_link/0, log/5, log/6, test/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
@@ -23,7 +23,7 @@
 %% External functions
 %% ====================================================================
 
-start() ->
+start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], _Opts = []).
 
 log( Type, Pid, File, Line, Format ) ->
@@ -85,7 +85,8 @@ handle_cast( {log, Type, Pid, File, Line, Format, Args}, State ) ->
         		true  -> do_log( Type, Pid, File, Line, Format, Args, State ) 
     		end;
 		
-		_ -> do_log( Type, Pid, File, Line, Format, Args, State )
+		_ -> 
+			do_log( Type, Pid, File, Line, Format, Args, State )
 	end,
     {noreply, State}.
 
@@ -156,7 +157,7 @@ get_simple_name( AbsolutePath ) ->
 is_string([H|T]) ->
     if 0 =< H, 
 	   H < 256, 
-	   integer(H)  -> is_string(T);
+	   is_integer(H)  -> is_string(T);
 	true -> false
     end;
 is_string([]) -> true.

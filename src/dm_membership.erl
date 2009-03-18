@@ -1,7 +1,7 @@
 %% Author: mat
 %% Created: 05/mar/2009
 %% Description: TODO: Add description to membership
--module(membership).
+-module(dm_membership).
 
 %%
 %% Include files
@@ -10,13 +10,13 @@
 %%
 %% Exported Functions
 %%
--export([start/0, stop/0, loop/1]).
+-export([start_link/0, stop/0, loop/1]).
 
 %%
 %% API Functions
 %%
 
-start() -> 
+start_link() -> 
 	finder:start(),
 	monitor:start(),
 	register( membership, spawn(?MODULE, loop, [[]])).

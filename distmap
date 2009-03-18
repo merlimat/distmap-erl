@@ -1,20 +1,17 @@
-#!/usr/bin/env escript
-%%! -pa ebin +K true -noshell
+#!/bin/bash 
 
--mode( compile ).
+ARGS="$*"
+ERL=`which erl`
+SHELL=-noshell
 
-main( Args ) ->
-	OptSpec = [ {help, boolean},
-	        	{version, v, boolean},
-		        {debug, d, boolean}
-	        ],
-	Defaults = [ {debug, false} ],
+if [ $# == 0 ]; then
+   ARGS=""
+else
+   ARGS=`echo ${ARGS} | sed s/-/\?/g`
 
-	{Opts, Meters} = getoptions:extract_options(Args, OptSpec, Defaults),
-	io:format("~p~n", [Opts]),
-	io:format("Meters: ~p~n", [Meters]),
-	
-	ring:test(), 
+   if [ $1 == '-s' ]; then
+       SHELL=
+   fi
+fi
 
-	erlang:halt( 0 ).
-
+$ERL -pa ebin +K true $SHELL -s distmap start ${ARGS}

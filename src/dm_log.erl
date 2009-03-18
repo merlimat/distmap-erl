@@ -45,8 +45,8 @@ log( Type, Pid, File, Line, Format, Args ) ->
 %%          {stop, Reason}
 %% --------------------------------------------------------------------
 init([]) ->
-	Debug = config:get(debug),
-	case config:get(log_file) of
+	Debug = dm_config:get_bool( debug ),
+	case dm_config:get( log_file ) of
         none ->
             {ok, [{file,none}, {debug,Debug}] };
         File ->
@@ -68,6 +68,7 @@ init([]) ->
 %% --------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
     Reply = ok,
+	io:format( "Got call....~n" ),
     {reply, Reply, State}.
 
 %% --------------------------------------------------------------------
@@ -91,9 +92,11 @@ handle_cast( {log, Type, Pid, File, Line, Format, Args}, State ) ->
     {noreply, State}.
 
 handle_info(_Info, State) ->
+	io:format( "Got Info....~n" ),
     {noreply, State}.
 
 terminate(_Reason, State) ->
+	io:format( "Stopping log~n" ),
     case proplists:get_value(file,State) of
         none -> ok;
         Fd   -> file:close(Fd)
@@ -154,6 +157,8 @@ get_simple_name( AbsolutePath ) ->
 	[First|_] = lists:reverse( util:unjoin( AbsolutePath, "/" ) ),
 	First.
 
+is_string(X) when is_atom(X) -> false;
+is_string(X) when is_tuple(X) -> false;
 is_string([H|T]) ->
     if 0 =< H, 
 	   H < 256, 

@@ -10,7 +10,8 @@
 %%
 %% Exported Functions
 %%
--export([for/3, format_addr/2, unjoin/2, benchmark/4, make_uuid/0]).
+-export([ for/3, format_addr/1, format_addr/2, parse_ip_address/1, 
+		  unjoin/2, benchmark/4, make_uuid/0, sleep/1 ]).
 
 %%
 %% API Functions
@@ -24,8 +25,17 @@ for( I, N, Fun ) ->
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+format_addr( {A,B,C,D} ) -> 
+	lists:flatten( io_lib:format( "~p.~p.~p.~p", [A,B,C,D]) ).
+
 format_addr( {A,B,C,D}, Port ) -> 
 	lists:flatten( io_lib:format( "~p.~p.~p.~p:~p", [A,B,C,D,Port]) ).
+
+parse_ip_address( Str ) ->
+	[StrIP, StrPort] = string:tokens( Str, ":" ),
+	Port = list_to_integer( StrPort ),
+	[A,B,C,D] = lists:map( fun list_to_integer/1, string:tokens( StrIP, "." ) ),
+	{{A,B,C,D}, Port}.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -125,3 +135,9 @@ uuid_to_string(U) ->
 uuid_get_parts(<<TL:32, TM:16, THV:16, CSR:8, CSL:8, N:48>>) ->
     [TL, TM, THV, CSR, CSL, N].
  
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+sleep( N ) -> 
+	receive
+	after N*1000 -> ok
+	end.

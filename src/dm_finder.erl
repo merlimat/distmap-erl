@@ -4,16 +4,18 @@
 %%%
 %%% Created : 05/mar/2009
 %%% -------------------------------------------------------------------
--module(finder).
+-module(dm_finder).
 
 -behaviour(gen_server).
 %% --------------------------------------------------------------------
 %% Include files
 %% --------------------------------------------------------------------
 
+-include( "distmap.hrl" ).
+
 %% --------------------------------------------------------------------
 %% External exports
--export([start/0]).
+-export([start_link/0, announce_myself/1, get_external_ip/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
@@ -24,9 +26,18 @@
 %% External functions
 %% ====================================================================
 
-start() ->
-  gen_server:start_link ({ local, ?MODULE }, ?MODULE, [ { 226, 0, 0, 1 }, 20000 ], []).
+start_link() ->
+	gen_server:start_link ({ local, ?MODULE }, ?MODULE, [], []).
 
+announce_myself( Type ) ->
+	gen_server:cast( ?MODULE, {announce_myself, Type}).
+
+get_external_ip() ->
+	Self = self(),
+	gen_server:cast( ?MODULE, {discover_ip, Self}),
+	receive
+		{ip, Self, Addr} -> Addr
+	end.
 
 %% ====================================================================
 %% Server functions
@@ -40,9 +51,9 @@ start() ->
 %%          ignore               |
 %%          {stop, Reason}
 %% --------------------------------------------------------------------
-init([Addr, Port]) ->
-	io:format( "Broadcast addr: ~s~n", [addr(Addr, Port)]),
-	process_flag (trap_exit, true),
+init( [] ) ->
+	{Addr, Port} = dm_config:get_addr( multicast_channel ),
+	?DEBUG_( "Broadcast addr: ~s", [util:format_addr(Addr, Port)]),
 	
   	Opts = [ { active, true },
     	     { ip, Addr },
@@ -53,10 +64,10 @@ init([Addr, Port]) ->
 
 	{ ok, RecvSocket } = gen_udp:open (Port, Opts),
 
-	{ ok, announce(#state{ recvsock = RecvSocket,
-                         sendsock = send_socket(),
-                         addr = Addr,
-                         port = Port }) }.
+	{ ok, #state{ recvsock = RecvSocket,
+                  sendsock = send_socket(),
+                  addr = Addr,
+                  port = Port } }.
 
 %% --------------------------------------------------------------------
 %% Function: handle_call/3
@@ -69,7 +80,7 @@ init([Addr, Port]) ->
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
 handle_call(_Request, From, State) ->
-	io:format( "Handle call from ~p~n", From ),
+	?DEBUG_( "Handle call from ~p", From ),
     Reply = ok,
     {reply, Reply, State}.
 
@@ -80,8 +91,17 @@ handle_call(_Request, From, State) ->
 %%          {noreply, State, Timeout} |
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
+handle_cast( {announce_myself, Type}, State) ->
+	?DEBUG_( "Handle announce cast: ~p", [Type] ),
+    {noreply, announce( State ) };
+
+handle_cast( {discover_ip, Proc}, State) ->
+	Pid = binary_to_list( term_to_binary( Proc ) ),
+	send_msg( "DISCOVER IP " ++ Pid, State ),
+	{noreply, State };
+
 handle_cast(Msg, State) ->
-	io:format( "Handle cast: ~p~n", Msg ),
+	?DEBUG_( "Handle cast: ~p", Msg ),
     {noreply, State}.
 
 %% --------------------------------------------------------------------
@@ -105,7 +125,7 @@ handle_info(_Info, State) ->
 terminate(Reason, State) ->
 	gen_udp:close (State#state.recvsock),
 	gen_udp:close (State#state.sendsock),
-	io:format( "Node finder stopped. reason:~p ~n", [Reason] ),
+	?DEBUG_( "Node finder stopped. reason:~p", Reason ),
     ok.
 
 %% --------------------------------------------------------------------
@@ -121,15 +141,12 @@ code_change(_OldVsn, State, _Extra) ->
 %% --------------------------------------------------------------------
 
 announce( State ) ->
-  NodeString = atom_to_list( node() ),
-  % Time = seconds(),
-  % Mac = mac ([ <<Time:64>>, NodeString ]),
-  Msg = "ANNOUNCE " ++ NodeString, % [ "DISCOVERV2 ", Mac, " ", <<Time:64>>, " ", NodeString ],
-  ok = gen_udp:send( State#state.sendsock,
-                     State#state.addr,
-                     State#state.port,
-                     Msg ),
-  State.
+	NodeString = atom_to_list( node() ),
+	% Time = seconds(),
+	% Mac = mac ([ <<Time:64>>, NodeString ]),
+	Msg = "ANNOUNCE " ++ NodeString, % [ "DISCOVERV2 ", Mac, " ", <<Time:64>>, " ", NodeString ],
+	send_msg( Msg, State ),
+  	State.
 
 process_packet( "ANNOUNCE " ++ Rest, IP, InPortNo, State ) ->
 	NodeName = list_to_atom(Rest),
@@ -139,7 +156,8 @@ process_packet( "ANNOUNCE " ++ Rest, IP, InPortNo, State ) ->
 			ok;
 		
 		true ->
-			io:format( "Announced ~p (~s)~n", [NodeName, addr(IP, InPortNo)] ),
+			?INFO_( "Announced ~p (~s)", 
+					[NodeName, util:format_addr(IP, InPortNo)] ),
 			membership ! {add, NodeName}
 	end,
   % Falling a mac is not really worth logging, since having multiple
@@ -170,16 +188,25 @@ process_packet( "ANNOUNCE " ++ Rest, IP, InPortNo, State ) ->
 %%                                   InPortNo ])
 %%   end,
   State;
+
+process_packet( "DISCOVER IP " ++ Proc, IP, _Port, State ) ->
+	Pid = binary_to_term( list_to_binary(Proc) ),
+	Pid ! {ip, Pid, IP},
+	State;
+
 process_packet (_Packet, _IP, _InPortNo, State) ->
-	io:format( "Unknown data received~n" ),
+	?DEBUG( "Unknown data received" ),
  	State.
+
+send_msg( Msg, State ) ->
+	ok = gen_udp:send( State#state.sendsock,
+                       State#state.addr,
+                       State#state.port,
+                       Msg ).
 
 send_socket() ->
   SendOpts = [ { ip, { 0, 0, 0, 0 } },
                { multicast_loop, true } ],
   { ok, SendSocket } = gen_udp:open (0, SendOpts),
   SendSocket.
-
-addr( {A,B,C,D}, Port ) -> 
-	lists:flatten( io_lib:format( "~p.~p.~p.~p:~p", [A,B,C,D,Port]) ).
 

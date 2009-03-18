@@ -7,3 +7,9 @@
 -define(WARNING_ (Format, Args), dm_log:log('WARNING', self(), ?FILE, ?LINE, Format, Args)).
 -define(INFO_    (Format, Args), dm_log:log('INFO',    self(), ?FILE, ?LINE, Format, Args)).
 -define(DEBUG_   (Format, Args), dm_log:log('DEBUG',   self(), ?FILE, ?LINE, Format, Args)).
+
+-define(A2L(X), atom_to_list(X)).
+-define(L2A(X), list_to_atom(X)).
+-define(L2I(X), list_to_integer(X)).
+-define(I2L(X), integer_to_list(X)).
+

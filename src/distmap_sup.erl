@@ -16,10 +16,10 @@
 %% --------------------------------------------------------------------
 -export([]).
 
--export( [start_link/0, init/1] ).
+-export( [start_link/1, init/1] ).
 
-start_link() ->
-	supervisor:start_link( ?MODULE, []).
+start_link( Conf ) ->
+	supervisor:start_link( {local, ?MODULE}, ?MODULE, [Conf]).
 
 %% ====================================================================
 %% Server functions
@@ -30,8 +30,15 @@ start_link() ->
 %%          ignore                          |
 %%          {error, Reason}
 %% --------------------------------------------------------------------
-init([]) ->
-	Log = { dm_log, {dm_log, start_link, [] }, permanent, 2000, worker, [dm_log] },
-    { ok, { {one_for_one, 5, 10}, [Log]} }.
+init( Conf ) ->
+	Config = { dm_config, {dm_config, start_link, [Conf] }, 
+			permanent, 2000, worker, [dm_config] },
+	Log = { dm_log, {dm_log, start_link, [] }, 
+			permanent, 2000, worker, [dm_log] },
+	Finder = { dm_finder, {dm_finder, start_link, [] }, 
+			permanent, 2000, worker, [dm_finder] },
+	Membership = { dm_membership, {dm_membership, start_link, [] }, 
+			permanent, 2000, worker, [dm_membership] },
+    { ok, { {one_for_one, 5, 10}, [Config, Log, Finder, Membership]} }.
 
 

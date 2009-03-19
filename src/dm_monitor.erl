@@ -35,22 +35,26 @@ end_monitor() ->
 %% ====================================================================
 
 init([]) ->
-	{ok, none}.
+	{ok, {none, none}}.
 
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
 %% ====================================================================
 
-handle_cast( {start_monitor, Node}, PingProc ) ->
-	if PingProc /= none -> exit( PingProc, kill );
-	   true -> ok
-	end,
-	Pid = spawn( ?MODULE, ping_proc, [Node] ),
-	?DEBUG_( "Monitoring node: ~p", [Node] ),
-	{noreply, Pid};
+handle_cast( {start_monitor, Node}, {PingProc,PrevNode} ) ->
+	if PrevNode == Node ->
+		   {noreply, {PingProc,Node}};
+	   true ->
+		   if PingProc /= none -> exit( PingProc, kill );
+	   			true -> ok
+		   end,
+		   Pid = spawn( ?MODULE, ping_proc, [Node] ),
+		   ?INFO_( "Monitoring node: ~p", [Node] ),
+	       {noreply, {Pid, Node}}   
+	end;
 
-handle_cast( end_monitor, PingProc ) ->
+handle_cast( end_monitor, {PingProc,_Node} ) ->
 	?DEBUG( "Stop monitoring, are we alone?" ),
 	case PingProc of
 		none -> ok;

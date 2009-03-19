@@ -9,10 +9,13 @@
 
 -include( "distmap.hrl" ).
 
--export( [add_myself/0, add_node/1, node_is_down/1, remove_node/1] ).
+-export( [ add_myself/0, add_node/1, node_is_down/1, remove_node/1, 
+		   send_node_list/2 ] ).
 
 % gen_server callbacks
 -export([start_link/0, init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
+
+-define( TIMEOUT, 5*1000 ).
 
 %% ====================================================================
 %% External functions
@@ -32,6 +35,9 @@ remove_node( Node ) ->
 
 node_is_down( Node ) ->
 	gen_server:cast( ?MODULE, {node_is_down, Node} ).
+
+send_node_list( Node, NodeList ) ->
+	gen_server:cast( {?MODULE, Node}, {node_list, NodeList} ).
 	
 %% ====================================================================
 %% Server functions
@@ -40,24 +46,16 @@ node_is_down( Node ) ->
 init([]) ->
 	{ok, ring:new() }.
 
-handle_call( {node_list, []}, _From, Ring ) ->
-	?INFO_( "Received Node list: ~p", [ring:physical_nodes(Ring)] ),
-	do_monitor( Ring ),
-	{reply, ok, Ring};
-handle_call( {node_list, [FirstNode|Rest]}, From, Ring ) ->
-	ring:add_node( Ring, FirstNode, 100 ),
-	handle_call( {node_list, Rest}, From, Ring );
-
 handle_call(_Request, _From, State) ->
     Reply = ok,
 	?DEBUG( "Got call...." ),
-    {reply, Reply, State}.
+    {reply, Reply, State, ?TIMEOUT}.
 
 %% ====================================================================
 
 handle_cast( add_myself, Ring ) ->
 	ring:add_node( Ring, node(), 100 ),
-	{noreply, Ring};
+	{noreply, Ring, ?TIMEOUT};
 
 handle_cast( {add_node, Node}, Ring ) ->
 	?DEBUG_( "Add node: ~p", [Node] ),
@@ -66,18 +64,15 @@ handle_cast( {add_node, Node}, Ring ) ->
 	
 	case i_am_on_preference_list( Ring, Node ) of 
 		false -> ok;
-		true ->
-			?DEBUG( "Sending node list" ),
-			ok = gen_server:call( {?MODULE, Node},
-						{node_list, ring:physical_nodes(Ring) } )
+		true -> send_node_list( Node, ring:physical_nodes(Ring) )
 	end,
-	{noreply, Ring};
+	{noreply, Ring, ?TIMEOUT};
 
 handle_cast( {remove_node, Node}, Ring ) ->
 	?DEBUG_( "remove node: ~p", [Node] ),
 	catch ring:remove_node( Ring, Node ),
 	do_monitor( Ring ),
-	{noreply, Ring};
+	{noreply, Ring, ?TIMEOUT};
 
 handle_cast( {node_is_down, Node}, Ring ) ->
 	?INFO_( "Node is down: ~p", [Node] ),
@@ -86,13 +81,27 @@ handle_cast( {node_is_down, Node}, Ring ) ->
 	dm_finder:announce_node_is_down( Node ),
 	
 	do_monitor( Ring ),
-	{noreply, Ring}.
+	{noreply, Ring, ?TIMEOUT};
+
+handle_cast( {node_list, []}, Ring ) ->
+	%% ?DEBUG_( "Received Node list: ~p", [ring:physical_nodes(Ring)] ),
+	do_monitor( Ring ),
+	{noreply, Ring, ?TIMEOUT};
+handle_cast( {node_list, [FirstNode|Rest]}, Ring ) ->
+	ring:add_node( Ring, FirstNode, 100 ),
+	handle_cast( {node_list, Rest}, Ring ).
 
 %% ====================================================================
 
-handle_info(_Info, State) ->
-	?DEBUG( "Got Info...." ),
-    {noreply, State}.
+handle_info(timeout, Ring) ->
+	% Send the node list to a random node
+	Node = get_random_node(Ring),
+	send_node_list( Node, ring:physical_nodes(Ring) ),
+    {noreply, Ring, ?TIMEOUT};
+
+handle_info(Info, State) ->
+	?DEBUG_( "Got Info: ~p", [Info] ),
+    {noreply, State, ?TIMEOUT}.
 
 terminate(Reason, _State) ->
 	?DEBUG_( "Stopping membership: ~p", [Reason] ).
@@ -112,14 +121,19 @@ code_change(_OldVsn, State, _Extra) ->
 
 do_monitor( Ring ) -> 
 	NextNode = ring:get_next_physical_node( Ring, node() ),
-	if NextNode == node() ->
-		   dm_monitor:end_monitor();
-	   true -> 
-		   ?DEBUG_( "NextNode: ~p", [NextNode] ),
-		   dm_monitor:start_monitor( NextNode )
+	if  NextNode == node() -> dm_monitor:end_monitor();
+		true               -> dm_monitor:start_monitor( NextNode )
 	end.
 
 i_am_on_preference_list( Ring, Object ) ->
 	PrefList = ring:get_preference_list( Ring, Object, 3 ),
 	util:contains( node(), PrefList ).
 	
+get_random_node( Ring ) ->
+	List = ring:physical_nodes( Ring ),
+	I = random:uniform( length(List) ),
+	Node = lists:nth( I, List ),
+	if Node == node() ->
+		get_random_node( Ring );
+		true -> Node
+	end.

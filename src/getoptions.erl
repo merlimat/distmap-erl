@@ -284,13 +284,3 @@ get_opt(Opt, OptList) ->
       _ -> '_'
    end.
 
-%% There must be a better/more efficient way of saying the disjunction of
-%% these two lists is/is not the empty set
-optequiv(Opts1, {Opts2, _}) ->
-   optequiv(Opts1, Opts2);
-optequiv(Opts1, Opts2) ->
-   case {Opts1 -- Opts2, Opts2 -- Opts1} of
-      {[], []} -> true;
-      _ -> false
-   end.
-   

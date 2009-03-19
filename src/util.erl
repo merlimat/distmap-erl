@@ -10,7 +10,7 @@
 %%
 %% Exported Functions
 %%
--export([ for/3, format_addr/1, format_addr/2, parse_ip_address/1, 
+-export([ for/3, format_addr/1, format_addr/2, parse_ip_address/1, replace/3,
 		  unjoin/2, contains/2, benchmark/4, make_uuid/0, sleep/1 ]).
 
 %%
@@ -115,10 +115,22 @@ unjoin_prefix(_,     _)     -> no.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-contains( Item, [] ) -> false;
+contains( _Item, [] ) -> false;
 contains( Item, [First|Rest] ) ->
 	if Item =:= First -> true;
 	   true -> contains( Item, Rest )
+	end.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+replace( Str, Chr1, Chr2 ) -> 
+	lists:reverse( replace( Str, Chr1, Chr2, [] ) ).
+replace( [], _Chr1, _Chr2, Acc ) -> Acc;
+replace( [F|R], Chr1, Chr2, Acc ) ->
+	if F == Chr1 -> 
+		replace( R, Chr1, Chr2, [Chr2|Acc] );
+	true ->
+		replace( R, Chr1, Chr2, [F|Acc] )
 	end.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

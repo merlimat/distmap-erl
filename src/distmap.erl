@@ -109,8 +109,7 @@ stop( _ ) ->
 process_args( Args ) ->
 	StrArgs = lists:map( fun(X) -> 
 							S = atom_to_list(X),
-							re:replace( S, "\\?", "\\-", 
-										[{return, list}, global])
+							util:replace( S, $?, $- )
 						 end, Args ),
 	try
 		getoptions:extract_options(StrArgs, ?OptSpec, ?Defaults)

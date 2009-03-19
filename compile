@@ -1,0 +1,5 @@
+#!/bin/bash
+
+mkdir -p ebin
+erl -noshell -s make all -s init stop
+

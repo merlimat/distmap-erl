@@ -11,7 +11,7 @@
 %% Exported Functions
 %%
 -export([ for/3, format_addr/1, format_addr/2, parse_ip_address/1, 
-		  unjoin/2, benchmark/4, make_uuid/0, sleep/1 ]).
+		  unjoin/2, contains/2, benchmark/4, make_uuid/0, sleep/1 ]).
 
 %%
 %% API Functions
@@ -112,6 +112,14 @@ unjoin2_loop([], _, _, _, Rev) ->
 unjoin_prefix([C|L], [C|S]) -> unjoin_prefix(L, S);
 unjoin_prefix([],    S)     -> S;
 unjoin_prefix(_,     _)     -> no.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+contains( Item, [] ) -> false;
+contains( Item, [First|Rest] ) ->
+	if Item =:= First -> true;
+	   true -> contains( Item, Rest )
+	end.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 

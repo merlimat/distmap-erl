@@ -11,7 +11,7 @@
 %% Exported Functions
 %%
 -export( [new/0, add_node/3, remove_node/2, get_node/2, get_preference_list/3, 
-		  get_next_physical_node/2, test/0, get_node_test/3] ).
+		  physical_nodes/1, get_next_physical_node/2, test/0, get_node_test/3] ).
 
 -import( util, [for/3] ).
 
@@ -31,21 +31,29 @@ add_node( Ring, Node, N ) ->
 	ok.
 
 remove_node( Ring, Node ) ->
-	BaseKey = gen_key(Node),
-	[{_, Node, _, N}] = ets:lookup( Ring, BaseKey ),
-	% Delete real node
-	ets:delete( Ring, BaseKey ),
+	try
+		BaseKey = gen_key(Node),
 	
-	% Delete virtual nodes
-	for( 1, N-1, fun(X) -> 
-				    ets:delete( Ring, gen_key(Node, X) )
-			     end ),
-	ok.
+		[{_, Node, _, N}] = ets:lookup( Ring, BaseKey ),
+		% Delete real node
+		ets:delete( Ring, BaseKey ),
+	
+		% Delete virtual nodes
+		for( 1, N-1, fun(X) -> 
+					    ets:delete( Ring, gen_key(Node, X) )
+				     end ),
+		ok
+	catch _ -> ok
+	end.
 
 get_node( Ring, Object ) ->
 	Key = gen_key( Object ),
 	{_, Node, _} = get_next_node( Ring, Key ),
 	Node.
+
+physical_nodes( Ring ) ->
+	List = ets:match( Ring, {'_', '$1', real, '_'} ), 
+	lists:sort( [ X || [X] <- List ] ).
 
 %%
 

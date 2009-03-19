@@ -90,6 +90,7 @@ start( _Type, _StartArgs) ->
 	?INFO_( "NodeName: '~s'", [NodeName2] ),
 	net_kernel:start( [?L2A(NodeName2), longnames] ),
 	
+	dm_membership:add_myself(),
 	dm_finder:announce_myself( dm_node ),
 	
 	{ok, SupPid}.

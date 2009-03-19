@@ -15,7 +15,8 @@
 
 %% --------------------------------------------------------------------
 %% External exports
--export([start_link/0, announce_myself/1, get_external_ip/0]).
+-export([ start_link/0, announce_myself/1, announce_node_is_down/1, 
+		  get_external_ip/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
@@ -32,12 +33,22 @@ start_link() ->
 announce_myself( Type ) ->
 	gen_server:cast( ?MODULE, {announce_myself, Type}).
 
+announce_node_is_down( Node ) ->
+	gen_server:cast( ?MODULE, {announce_node_is_down, Node}).
+
 get_external_ip() ->
+	% First assing a temp name to the node
+	% to avoid warnings on other nodes
+	{A,B,C} = now(),
+	Name = ?L2A( ?I2L(A+B+C) ++ "@127.0.0.1" ),
+	net_kernel:start( [Name, longnames] ),
 	Self = self(),
-	gen_server:cast( ?MODULE, {discover_ip, Self}),
-	receive
-		{ip, Self, Addr} -> Addr
-	end.
+ 	gen_server:cast( ?MODULE, {discover_ip, Self}),
+ 	IP = receive
+ 		{ip, Self, Addr} -> Addr
+ 	end,
+	net_kernel:stop(),
+	IP.
 
 %% ====================================================================
 %% Server functions
@@ -95,6 +106,10 @@ handle_cast( {announce_myself, Type}, State) ->
 	?DEBUG_( "Handle announce cast: ~p", [Type] ),
     {noreply, announce( State ) };
 
+handle_cast( {announce_node_is_down, Node}, State) ->
+	send_msg( "NODE IS DOWN " ++ ?A2L(Node), State ),
+    {noreply, State };
+
 handle_cast( {discover_ip, Proc}, State) ->
 	Pid = binary_to_list( term_to_binary( Proc ) ),
 	send_msg( "DISCOVER IP " ++ Pid, State ),
@@ -150,6 +165,7 @@ announce( State ) ->
 
 process_packet( "ANNOUNCE " ++ Rest, IP, InPortNo, State ) ->
 	NodeName = list_to_atom(Rest),
+	?DEBUG_( "Process packet node: ~p", [node()] ),
 	if 
 		NodeName =:= node() -> 
 			% Ignore auto-announce
@@ -158,36 +174,14 @@ process_packet( "ANNOUNCE " ++ Rest, IP, InPortNo, State ) ->
 		true ->
 			?INFO_( "Announced ~p (~s)", 
 					[NodeName, util:format_addr(IP, InPortNo)] ),
-			membership ! {add, NodeName}
+			dm_membership:add_node( NodeName )
 	end,
-  % Falling a mac is not really worth logging, since having multiple
-  % cookies on the network is one way to prevent crosstalk.  However
-  % the packet should always have the right structure.
+	State;
 
-%%   try
-%%     <<Mac:20/binary, " ", 
-%%       Time:64, " ",
-%%       NodeString/binary>> = list_to_binary (Rest),
-%% 	
-%%     case { mac ([ <<Time:64>>, NodeString ]), abs (seconds () - Time) } of
-%%       { Mac, AbsDelta } when AbsDelta < 300 ->
-%%         net_adm:ping (list_to_atom (binary_to_list (NodeString)));
-%%       { Mac, AbsDelta } ->
-%%         error_logger:warning_msg ("expired DISCOVERV2 (~p) from ~p:~p~n",
-%%                                   [ AbsDelta,
-%%                                     IP,
-%%                                     InPortNo ]);
-%%       _ ->
-%%         ok
-%%     end
-%%   catch
-%%     error : { badmatch, _ } ->
-%%       error_logger:warning_msg ("bad DISCOVERV2 from ~p:~p~n", 
-%%                                 [ list_to_binary (Rest),
-%%                                   IP,
-%%                                   InPortNo ])
-%%   end,
-  State;
+process_packet( "NODE IS DOWN " ++ NodeName, _IP, _Port, State ) ->
+	?WARNING_( "Node is down: '~s'", NodeName ),
+	dm_membership:remove_node( ?L2A(NodeName) ),
+	State;
 
 process_packet( "DISCOVER IP " ++ Proc, IP, _Port, State ) ->
 	Pid = binary_to_term( list_to_binary(Proc) ),
@@ -205,8 +199,8 @@ send_msg( Msg, State ) ->
                        Msg ).
 
 send_socket() ->
-  SendOpts = [ { ip, { 0, 0, 0, 0 } },
-               { multicast_loop, true } ],
-  { ok, SendSocket } = gen_udp:open (0, SendOpts),
-  SendSocket.
+	SendOpts = [ { ip, { 0, 0, 0, 0 } },
+                 { multicast_loop, true } ],
+	{ ok, SendSocket } = gen_udp:open (0, SendOpts),
+	SendSocket.
 

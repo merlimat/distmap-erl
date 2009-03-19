@@ -39,6 +39,9 @@ init( Conf ) ->
 			permanent, 2000, worker, [dm_finder] },
 	Membership = { dm_membership, {dm_membership, start_link, [] }, 
 			permanent, 2000, worker, [dm_membership] },
-    { ok, { {one_for_one, 5, 10}, [Config, Log, Finder, Membership]} }.
+	Monitor = { dm_monitor, {dm_monitor, start_link, [] }, 
+			permanent, 2000, worker, [dm_monitor] },
+	
+    { ok, { {one_for_one, 5, 10}, [Config, Log, Finder, Membership, Monitor]} }.
 
 

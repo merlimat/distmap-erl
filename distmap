@@ -14,4 +14,4 @@ else
    fi
 fi
 
-$ERL -pa ebin +K true $SHELL -s distmap start ${ARGS}
+$ERL -setcookie 1234 -pa ebin +K true $SHELL -s distmap start ${ARGS}

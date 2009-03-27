@@ -11,7 +11,7 @@
 %% Exported Functions
 %%
 -export([ for/3, format_addr/1, format_addr/2, parse_ip_address/1, replace/3,
-		  unjoin/2, contains/2, benchmark/4, make_uuid/0, sleep/1 ]).
+          unjoin/2, contains/2, benchmark/4, make_uuid/0, sleep/1 ]).
 
 %%
 %% API Functions
@@ -20,22 +20,22 @@
 
 for( I, N, _Fun ) when I > N-> ok;
 for( I, N, Fun ) ->
-	Fun( I ), 
-	for( I+1, N, Fun ).
+    Fun( I ), 
+    for( I+1, N, Fun ).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 format_addr( {A,B,C,D} ) -> 
-	lists:flatten( io_lib:format( "~p.~p.~p.~p", [A,B,C,D]) ).
+    lists:flatten( io_lib:format( "~p.~p.~p.~p", [A,B,C,D]) ).
 
 format_addr( {A,B,C,D}, Port ) -> 
-	lists:flatten( io_lib:format( "~p.~p.~p.~p:~p", [A,B,C,D,Port]) ).
+    lists:flatten( io_lib:format( "~p.~p.~p.~p:~p", [A,B,C,D,Port]) ).
 
 parse_ip_address( Str ) ->
-	[StrIP, StrPort] = string:tokens( Str, ":" ),
-	Port = list_to_integer( StrPort ),
-	[A,B,C,D] = lists:map( fun list_to_integer/1, string:tokens( StrIP, "." ) ),
-	{{A,B,C,D}, Port}.
+    [StrIP, StrPort] = string:tokens( Str, ":" ),
+    Port = list_to_integer( StrPort ),
+    [A,B,C,D] = lists:map( fun list_to_integer/1, string:tokens( StrIP, "." ) ),
+    {{A,B,C,D}, Port}.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -46,10 +46,10 @@ benchmark( Mod, Fun, Args, N ) when N > 0 ->
     {Max,_} = lists:max(L),
     {Med,Res} = lists:nth(round((Length / 2)), lists:sort(L)),
     Avg = round(lists:foldl(fun({X,_}, Sum) -> X + Sum end, 0, L) / Length),
-	StdDev = round( math:sqrt( 
-			   lists:foldl( fun({X,_}, Sum) -> math:pow( X - Avg, 2) + Sum end, 0, L ) 
-			   / Length ) ),
-	Stats = [ {min, Min}, {max, Max}, {med, Med}, {avg, Avg}, {stddev, StdDev}],
+    StdDev = round( math:sqrt( 
+               lists:foldl( fun({X,_}, Sum) -> math:pow( X - Avg, 2) + Sum end, 0, L ) 
+               / Length ) ),
+    Stats = [ {min, Min}, {max, Max}, {med, Med}, {avg, Avg}, {stddev, StdDev}],
     {Res, Stats}.
 
 test_loop( _Mod, _Fun, _Args, 0, List ) ->
@@ -117,21 +117,21 @@ unjoin_prefix(_,     _)     -> no.
 
 contains( _Item, [] ) -> false;
 contains( Item, [First|Rest] ) ->
-	if Item =:= First -> true;
-	   true -> contains( Item, Rest )
-	end.
+    if Item =:= First -> true;
+       true -> contains( Item, Rest )
+    end.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 replace( Str, Chr1, Chr2 ) -> 
-	lists:reverse( replace( Str, Chr1, Chr2, [] ) ).
+    lists:reverse( replace( Str, Chr1, Chr2, [] ) ).
 replace( [], _Chr1, _Chr2, Acc ) -> Acc;
 replace( [F|R], Chr1, Chr2, Acc ) ->
-	if F == Chr1 -> 
-		replace( R, Chr1, Chr2, [Chr2|Acc] );
-	true ->
-		replace( R, Chr1, Chr2, [F|Acc] )
-	end.
+    if F == Chr1 -> 
+        replace( R, Chr1, Chr2, [Chr2|Acc] );
+    true ->
+        replace( R, Chr1, Chr2, [F|Acc] )
+    end.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -142,15 +142,15 @@ make_uuid() -> list_to_atom( uuid_to_string( uuid_v4() ) ).
 
 uuid_v4() ->
     uuid_v4( random:uniform(round(math:pow(2, 48))) - 1, 
-	         random:uniform(round(math:pow(2, 12))) - 1, 
-		     random:uniform(round(math:pow(2, 32))) - 1, 
-		     random:uniform(round(math:pow(2, 30))) - 1 ).
+             random:uniform(round(math:pow(2, 12))) - 1, 
+             random:uniform(round(math:pow(2, 32))) - 1, 
+             random:uniform(round(math:pow(2, 30))) - 1 ).
 
 uuid_v4(R1, R2, R3, R4) -> <<R1:48, 4:4, R2:12, 2:2, R3:32, R4: 30>>.
 
 uuid_to_string(U) ->
     lists:flatten(io_lib:format("~8.16.0b-~4.16.0b-~4.16.0b-~2.16.0b~2.16.0b-~12.16.0b", 
-								uuid_get_parts(U))).
+                                uuid_get_parts(U))).
 
 uuid_get_parts(<<TL:32, TM:16, THV:16, CSR:8, CSL:8, N:48>>) ->
     [TL, TM, THV, CSR, CSL, N].
@@ -158,6 +158,6 @@ uuid_get_parts(<<TL:32, TM:16, THV:16, CSR:8, CSL:8, N:48>>) ->
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 sleep( N ) -> 
-	receive
-	after N*1000 -> ok
-	end.
+    receive
+    after N*1000 -> ok
+    end.

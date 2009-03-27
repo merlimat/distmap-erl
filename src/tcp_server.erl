@@ -5,22 +5,22 @@
 -behavior(gen_server).
 
 -export([init/1, code_change/3, handle_call/3, 
-	  	 handle_cast/2, handle_info/2, terminate/2]).
+         handle_cast/2, handle_info/2, terminate/2]).
 -export([accept_loop/3]).
 -export([start_link/2, start_link/3]).
 -export([behaviour_info/1]).
 
 %% Define the tcp_server behaviour
 behaviour_info( callbacks ) ->
-	[ {new_connection, 1},
-	  {received_data, 2},
-	  {timeout, 1},
-	  {connection_closed,1}
-	];
+    [ {new_connection, 1},
+      {received_data, 2},
+      {timeout, 1},
+      {connection_closed,1}
+    ];
 behaviour_info(_) -> undefined.
 
 -record(server_state, { module,
-        				lsocket = null } ).
+                        lsocket = null } ).
 
 start_link( Module, Port ) ->
     start_link( Module, Port, [] ).
@@ -31,12 +31,12 @@ start_link( Module, Port, Options ) ->
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 -define( DefaultOptions, [ binary, 
-						   {packet, 0}, 
-					       {active, false},
-				   	       {reuseaddr, true} ] ).
+                           {packet, 0}, 
+                           {active, false},
+                           {reuseaddr, true} ] ).
 
 init( {Module, Port, Options} ) ->
-	TcpOptions = lists:merge( ?DefaultOptions, Options ),
+    TcpOptions = lists:merge( ?DefaultOptions, Options ),
     case gen_tcp:listen( Port, TcpOptions ) of
         {ok, LSocket} ->
             State = #server_state{ lsocket=LSocket, module=Module },
@@ -50,9 +50,9 @@ handle_cast({accepted, _}, State=#server_state{}) ->
 
 % To be more robust we should be using spawn_link and trapping exits
 accept(State = #server_state{lsocket=LSocket, 
-							 module=Module} ) ->
+                             module=Module} ) ->
     proc_lib:spawn_link( ?MODULE, accept_loop, 
-			  			 [self(), LSocket, Module]),
+                         [self(), LSocket, Module]),
     State.
 
 % These are just here to suppress warnings.
@@ -67,57 +67,57 @@ accept_loop( Server, LSocket, Module ) ->
     % Let the server spawn a new process and replace this loop
     % with the echo loop, to avoid blocking 
     gen_server:cast( Server, {accepted, self()} ),
-	{ok, From} = inet:peername( Socket ),
-	{ok, ConnState} = Module:new_connection( From ),
-	connection_loop( Socket, Module, ConnState, infinity ).
+    {ok, From} = inet:peername( Socket ),
+    {ok, ConnState} = Module:new_connection( From ),
+    connection_loop( Socket, Module, ConnState, infinity ).
 
 connection_loop( Socket, Module, ConnState, Timeout ) ->
-	case catch gen_tcp:recv( Socket, 0, Timeout ) of
+    case catch gen_tcp:recv( Socket, 0, Timeout ) of
         {ok, Data} ->
-			Result = Module:received_data( Data, ConnState ), 
-			process_result( Socket, Module, Result );
-		
-		{error, timeout} ->
-			Result = Module:timeout( ConnState ),
-			process_result( Socket, Module, Result );
+            Result = Module:received_data( Data, ConnState ), 
+            process_result( Socket, Module, Result );
+        
+        {error, timeout} ->
+            Result = Module:timeout( ConnState ),
+            process_result( Socket, Module, Result );
 
-		{error, closed} ->
-			Module:connection_close( ConnState );
-		
-		Any -> 
-			io:format( "Error: ~p~n", [Any] )
+        {error, closed} ->
+            Module:connection_close( ConnState );
+        
+        Any -> 
+            io:format( "Error: ~p~n", [Any] )
     end.
 
 process_result( Socket, Module, CallbackResult ) ->
-	case CallbackResult of
-		{reply, ReplyData, NewState} ->
-			gen_tcp:send( Socket, ReplyData ), 
-			connection_loop( Socket, Module, NewState, infinity );
-		
-		{reply, ReplyData, NewState, Timeout} ->
-			gen_tcp:send( Socket, ReplyData ), 
-			connection_loop( Socket, Module, NewState, Timeout );
-				
-		{reply_close, ReplyData, NewState} ->
-			gen_tcp:send( Socket, ReplyData ),
-			gen_tcp:close( Socket ), 
-			Module:connection_close( NewState );
-		
-		{noreply, NewState} ->
-			connection_loop( Socket, Module, NewState, infinity );
-		
-		{noreply, NewState, Timeout} ->
-			connection_loop( Socket, Module, NewState, Timeout );
-				
-		{close, NewState} ->
-			gen_tcp:close( Socket ), 
-			Module:connection_close( NewState );
+    case CallbackResult of
+        {reply, ReplyData, NewState} ->
+            gen_tcp:send( Socket, ReplyData ), 
+            connection_loop( Socket, Module, NewState, infinity );
+        
+        {reply, ReplyData, NewState, Timeout} ->
+            gen_tcp:send( Socket, ReplyData ), 
+            connection_loop( Socket, Module, NewState, Timeout );
+                
+        {reply_close, ReplyData, NewState} ->
+            gen_tcp:send( Socket, ReplyData ),
+            gen_tcp:close( Socket ), 
+            Module:connection_close( NewState );
+        
+        {noreply, NewState} ->
+            connection_loop( Socket, Module, NewState, infinity );
+        
+        {noreply, NewState, Timeout} ->
+            connection_loop( Socket, Module, NewState, Timeout );
+                
+        {close, NewState} ->
+            gen_tcp:close( Socket ), 
+            Module:connection_close( NewState );
 
-		{'EXIT', Reason} ->
-			io:format( "Exit: ~p~n", [Reason] ),
-			exit( Reason );
-	
-		Any -> 
-			io:format( "unexpected result: ~p~n", [Any] )
-	end.
-	
+        {'EXIT', Reason} ->
+            io:format( "Exit: ~p~n", [Reason] ),
+            exit( Reason );
+    
+        Any -> 
+            io:format( "unexpected result: ~p~n", [Any] )
+    end.
+    

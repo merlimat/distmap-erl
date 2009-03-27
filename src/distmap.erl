@@ -3,7 +3,7 @@
 %% Description: TODO: Add description to distmap
 -module(distmap).
 
--export( [start/0, start/1, start/2, stop/1 ]).
+-export( [start/0, start/2, stop/1 ]).
 
 -include( "distmap.hrl" ).
 
@@ -21,10 +21,11 @@
 %% ====================================================================!
 %% External functions
 %% ====================================================================!
-start() ->
-	start_app( ?Defaults ).
+%start() ->
+%	start_app( ?Defaults ).
 
-start( Args ) ->
+start() ->
+	Args = init:get_plain_arguments(),
 	{Conf, _} = process_args( Args ),
 	start_app( Conf ).
 
@@ -107,12 +108,8 @@ stop( _ ) ->
 %% ====================================================================
 
 process_args( Args ) ->
-	StrArgs = lists:map( fun(X) -> 
-							S = atom_to_list(X),
-							util:replace( S, $?, $- )
-						 end, Args ),
 	try
-		getoptions:extract_options(StrArgs, ?OptSpec, ?Defaults)
+		getoptions:extract_options(Args, ?OptSpec, ?Defaults)
 	catch 
 		_Reason -> 
 			usage(), 

@@ -7,11 +7,12 @@ SHELL=-noshell
 if [ $# == 0 ]; then
    ARGS=""
 else
-   ARGS=`echo ${ARGS} | sed s/-/\?/g`
+   # ARGS=`echo ${ARGS} | sed s/-/\?/g`
 
    if [ $1 == '-s' ]; then
        SHELL=
    fi
 fi
 
-$ERL -setcookie 1234 -pa ebin +K true $SHELL -s distmap start ${ARGS}
+$ERL -setcookie 1234 -pa ebin +K true $SHELL -s distmap start -extra ${ARGS}
+

@@ -9,7 +9,11 @@
 -define(DEBUG_   (Format, Args), dm_log:log('DEBUG',   self(), ?FILE, ?LINE, Format, Args)).
 
 -define(A2L(X), atom_to_list(X)).
+-define(B2L(X), binary_to_list(X)).
+-define(B2T(X), binary_to_term(X)).
 -define(L2A(X), list_to_atom(X)).
+-define(L2B(X), list_to_binary(X)).
 -define(L2I(X), list_to_integer(X)).
 -define(I2L(X), integer_to_list(X)).
+-define(T2B(X), term_to_binary(X)).
 

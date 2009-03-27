@@ -73,10 +73,14 @@ init( [] ) ->
              { reuseaddr, true },
            list ],
 
-	{ ok, RecvSocket } = gen_udp:open (Port, Opts),
+	{ ok, RecvSocket } = gen_udp:open( Port, Opts ),
+	
+	SendOpts = [ { ip, { 0, 0, 0, 0 } },
+                 { multicast_loop, true } ],
+	{ ok, SendSocket } = gen_udp:open( 0, SendOpts ),
 
 	{ ok, #state{ recvsock = RecvSocket,
-                  sendsock = send_socket(),
+                  sendsock = SendSocket,
                   addr = Addr,
                   port = Port } }.
 
@@ -103,8 +107,9 @@ handle_call(_Request, From, State) ->
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
 handle_cast( {announce_myself, Type}, State) ->
-	?DEBUG_( "Handle announce cast: ~p", [Type] ),
-    {noreply, announce( State ) };
+	Msg = "ANNOUNCE " ++ ?A2L(Type) ++ " " ++ ?A2L( node() ),
+	send_msg( Msg, State ),
+    {noreply, State };
 
 handle_cast( {announce_node_is_down, Node}, State) ->
 	send_msg( "NODE IS DOWN " ++ ?A2L(Node), State ),
@@ -126,11 +131,10 @@ handle_cast(Msg, State) ->
 %%          {noreply, State, Timeout} |
 %%          {stop, Reason, State}            (terminate/2 is called)
 %% --------------------------------------------------------------------
-handle_info ({ udp, Socket, IP, Port, Packet },
-             State=#state{ recvsock = Socket }) ->
-	{ noreply, process_packet( Packet, IP, Port, State ) };
-handle_info(_Info, State) ->
-    {noreply, State}.
+handle_info( {udp, Socket, IP, _Port, Packet},
+              State=#state{ recvsock = Socket }) ->
+	process_packet( Packet, IP ),
+	{ noreply, State }.
 
 %% --------------------------------------------------------------------
 %% Function: terminate/2
@@ -155,52 +159,31 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %% --------------------------------------------------------------------
 
-announce( State ) ->
-	NodeString = atom_to_list( node() ),
-	% Time = seconds(),
-	% Mac = mac ([ <<Time:64>>, NodeString ]),
-	Msg = "ANNOUNCE " ++ NodeString, % [ "DISCOVERV2 ", Mac, " ", <<Time:64>>, " ", NodeString ],
-	send_msg( Msg, State ),
-  	State.
-
-process_packet( "ANNOUNCE " ++ Rest, IP, InPortNo, State ) ->
-	NodeName = list_to_atom(Rest),
+process_packet( "ANNOUNCE " ++ Rest, _IP ) ->
+	[TypeName, NodeName] = string:tokens( Rest, " " ),
+	_Type = ?L2A(TypeName),
+	Node = ?L2A(NodeName),
 	?DEBUG_( "Process packet node: ~p", [node()] ),
 	if 
-		NodeName =:= node() -> 
+		Node =:= node() -> 
 			% Ignore auto-announce
 			ok;
 		
 		true ->
-			?INFO_( "Announced ~p (~s)", 
-					[NodeName, util:format_addr(IP, InPortNo)] ),
-			dm_membership:add_node( NodeName )
-	end,
-	State;
+			?INFO_( "Announced ~p",	[Node] ),
+			dm_membership:add_node( Node )
+	end;
 
-process_packet( "NODE IS DOWN " ++ NodeName, _IP, _Port, State ) ->
+process_packet( "NODE IS DOWN " ++ NodeName, _IP ) ->
 	?WARNING_( "Node is down: '~s'", NodeName ),
-	dm_membership:remove_node( ?L2A(NodeName) ),
-	State;
+	dm_membership:remove_node( ?L2A(NodeName) );
 
-process_packet( "DISCOVER IP " ++ Proc, IP, _Port, State ) ->
-	Pid = binary_to_term( list_to_binary(Proc) ),
-	Pid ! {ip, Pid, IP},
-	State;
-
-process_packet (_Packet, _IP, _InPortNo, State) ->
-	?DEBUG( "Unknown data received" ),
- 	State.
+process_packet( "DISCOVER IP " ++ Proc, IP ) ->
+	Pid = ?B2T( ?L2B(Proc) ),
+	Pid ! {ip, Pid, IP}.
 
 send_msg( Msg, State ) ->
 	ok = gen_udp:send( State#state.sendsock,
                        State#state.addr,
                        State#state.port,
                        Msg ).
-
-send_socket() ->
-	SendOpts = [ { ip, { 0, 0, 0, 0 } },
-                 { multicast_loop, true } ],
-	{ ok, SendSocket } = gen_udp:open (0, SendOpts),
-	SendSocket.
-

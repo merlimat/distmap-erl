@@ -82,7 +82,7 @@ connection_loop( Socket, Module, ConnState, Timeout ) ->
 			process_result( Socket, Module, Result );
 
 		{error, closed} ->
-			Module:connection_closed( ConnState );
+			Module:connection_close( ConnState );
 		
 		Any -> 
 			io:format( "Error: ~p~n", [Any] )
@@ -101,7 +101,7 @@ process_result( Socket, Module, CallbackResult ) ->
 		{reply_close, ReplyData, NewState} ->
 			gen_tcp:send( Socket, ReplyData ),
 			gen_tcp:close( Socket ), 
-			Module:connection_closed( NewState );
+			Module:connection_close( NewState );
 		
 		{noreply, NewState} ->
 			connection_loop( Socket, Module, NewState, infinity );
@@ -111,7 +111,7 @@ process_result( Socket, Module, CallbackResult ) ->
 				
 		{close, NewState} ->
 			gen_tcp:close( Socket ), 
-			Module:connection_closed( NewState );
+			Module:connection_close( NewState );
 
 		{'EXIT', Reason} ->
 			io:format( "Exit: ~p~n", [Reason] ),

@@ -112,7 +112,11 @@ handle_cast( {announce_myself, Type}, State) ->
     {noreply, State };
 
 handle_cast( {announce_node_is_down, Node}, State) ->
-    send_msg( "NODE IS DOWN " ++ ?A2L(Node), State ),
+    send_msg( "NODE IS DOWN " 
+                ++ ?A2L(node()) % Sender 
+                ++ " "
+                ++ ?A2L(Node),  % Crashed node
+              State ),
     {noreply, State };
 
 handle_cast( {discover_ip, Proc}, State) ->
@@ -174,9 +178,18 @@ process_packet( "ANNOUNCE " ++ Rest, _IP ) ->
             dm_membership:add_node( Node )
     end;
 
-process_packet( "NODE IS DOWN " ++ NodeName, _IP ) ->
-    ?WARNING_( "Node is down: '~s'", NodeName ),
-    dm_membership:remove_node( ?L2A(NodeName) );
+process_packet( "NODE IS DOWN " ++ Rest, _IP ) ->
+    [SenderName, NodeName] = util:unjoin( Rest ),
+    Sender = ?L2A( SenderName ),
+    if 
+        Sender =:= node() ->
+            % Ignore auto-announce
+            ok;
+        true ->
+            ?WARNING_( "Node is down: '~s' -- (Sender: '~s')", 
+                       [NodeName, SenderName] ),
+            dm_membership:remove_node( ?L2A(NodeName) )
+    end;
 
 process_packet( "DISCOVER IP " ++ Proc, IP ) ->
     Pid = ?B2T( ?L2B(Proc) ),

@@ -62,7 +62,7 @@ handle_cast( end_monitor, {PingProc,_Node} ) ->
         Pid -> 
             exit( Pid, kill )
     end,
-    {noreply, none}.
+    {noreply, {none, none} }.
 
 %% ====================================================================
 

@@ -84,7 +84,7 @@ handle_cast( {node_is_down, Node}, Ring ) ->
     {noreply, Ring, ?TIMEOUT};
 
 handle_cast( {node_list, []}, Ring ) ->
-    %% ?DEBUG_( "Received Node list: ~p", [ring:physical_nodes(Ring)] ),
+    % ?DEBUG_( "Received Node list: ~p", [ring:physical_nodes(Ring)] ),
     do_monitor( Ring ),
     {noreply, Ring, ?TIMEOUT};
 handle_cast( {node_list, [FirstNode|Rest]}, Ring ) ->

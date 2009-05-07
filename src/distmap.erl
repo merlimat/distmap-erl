@@ -118,10 +118,13 @@ process_args( Args ) ->
 
 usage() ->
     io:format( "distmap [options]~n"
-        "   --help                      Print usage message~n"
-        "   --version                   Print version message~n"
+        "   -h, --help                  Print usage message~n"
+        "   -v, --version               Print version message~n"
         "   -d, --debug                 Print debug output~n"
-        "   -c, --config <file>         Use alternate configuration file~n"
+        "~n"
+        "   -n, --name NAME             Set the node name~n"
+        "   -s, --shell                 Leave an Erlang shell opened~n"
+        "   -c, --config FILE           Use alternate configuration file~n"
         "~n" ).
 
 version() -> 

@@ -11,7 +11,7 @@
 %% Exported Functions
 %%
 -export([ for/3, format_addr/1, format_addr/2, parse_ip_address/1, replace/3,
-          unjoin/2, contains/2, benchmark/4, make_uuid/0, sleep/1 ]).
+          unjoin/1, unjoin/2, contains/2, benchmark/4, make_uuid/0, sleep/1 ]).
 
 %%
 %% API Functions
@@ -59,6 +59,9 @@ test_loop( Mod, Fun, Args, N, List ) ->
     test_loop( Mod, Fun, Args, N - 1, [Res|List] ).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+unjoin(String) ->
+    unjoin( String, " " ).
 
 unjoin(String, []) ->
      unjoin0(String);
